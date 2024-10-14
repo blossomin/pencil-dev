@@ -7,3 +7,7 @@
 [submodule "EzPC"]
 	path = EzPC
 	url = https://github.com/lightbulb128/EzPC.git
+
+[submodule "troy-nova"]
+	path = troy-nova
+	url = https://github.com/lightbulb128/troy-nova.git
