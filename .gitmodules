@@ -1,6 +1,6 @@
 [submodule "OpenCheetah"]
 	path = OpenCheetah
-	url = https://github.com/lightbulb128/OpenCheetah.git
+	url = https://github.com/blossomin/OpenCheetah.git
 [submodule "seal-cuda"]
 	path = seal-cuda
 	url = https://github.com/blossomin/seal-cuda-dev.git
