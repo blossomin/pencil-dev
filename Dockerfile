@@ -3,7 +3,7 @@ FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04
 
 # Install git and other dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential git vim python3 python3-dev python3-pip python3-venv \
+    build-essential git vim cmake python3 python3-dev python3-pip python3-venv libssl-dev openssl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --upgrade pip \
@@ -13,6 +13,9 @@ WORKDIR /home/dchen/projects/pencil-dev
 
 # Copy the project files into the container
 COPY . /home/dchen/projects/pencil-dev
+
+ENV OPENSSL_ROOT_DIR=/usr/lib/ssl
+ENV OPENSSL_CRYPTO_LIBRARY=/usr/lib/x86_64-linux-gnu/libcrypto.so
 
 # Change ownership of the directory
 RUN chown -R $(id -u):$(id -g) /home/dchen/projects/pencil-dev
