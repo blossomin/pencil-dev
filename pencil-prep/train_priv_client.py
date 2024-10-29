@@ -83,6 +83,8 @@ if __name__ == "__main__":
     print("Client: Train dataset loaded")
 
     # train
+    iterations = 0
+    total_time = 0
     for epoch in range(args.e):
         epoch_time = 0
         print(f"Epoch = {epoch}")
@@ -126,8 +128,14 @@ if __name__ == "__main__":
                 name = f"epoch{epoch}-step{step}"
                 if SPLIT: name += f"-split-join{SPLIT_JOIN_COUNT}"
                 comm.send(name)
+            iterations += 1
+            if iterations >= 100:
+                break
         print("Epoch time =", epoch_time)
+        total_time += epoch_time
+        if iterations >= 100:
+            break
     comm.send("finish")
-
+    print("Total time =", total_time)
     # close connection
     comm.close_connection()

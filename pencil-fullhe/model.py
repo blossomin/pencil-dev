@@ -236,6 +236,6 @@ def get_dataset(x):
     if "agnews" in x: return "agnews", (32, 256, 64)
     if "classifier" in x: return "cifar10-224", (64, 3, 224, 224)
     if "cifar10" in x: return "cifar10-32", (64, 3, 32, 32)
-    if "mnist" in x: return "mnist", (32, 1, 28, 28)
+    if "mnist" in x: return "mnist", (1024, 1, 28, 28)
     return "mnist", (32, 1, 28, 28)
     raise Exception()
