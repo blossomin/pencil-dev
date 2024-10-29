@@ -1,7 +1,7 @@
 FROM fbpcf/ubuntu-emp:0.2.3-haswell as emp
 
 # Use the PyTorch base image with CUDA support
-FROM nvidia/cuda:12.4-cudnn8-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 # Install git and other dependencies
 RUN apt-get update && apt-get install -y \
