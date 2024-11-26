@@ -6,7 +6,8 @@ PORT = 20010
 # plain, ckks, gpu, gpu_cheetah
 CRYPTO = "gpu_cheetah"
 CUDA = torch.cuda.is_available()
-DEVICE = "cuda" if CUDA else "cpu"
+# DEVICE = "cuda" if CUDA else "cpu"
+DEVICE = "cpu"
 
 # NETWORK_BANDWIDTH = 384 * (1024 ** 2) # bytes per second
 NETWORK_BANDWIDTH = 0

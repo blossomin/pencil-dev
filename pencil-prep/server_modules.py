@@ -182,12 +182,14 @@ class Linear(ServerModule):
         product_cipher = self.crypto.matmul(helper, v_cipher, u_encoded)
       else:
         u_encoded = self.crypto.matmul_encode_x(helper, u)
-        product_cipher = self.crypto.matmul(helper, u_encoded, v_cipher)
+        product_cipher = self.crypto.matmul_reverse(helper, u_encoded, v_cipher)
       output_size = np.product(self.output_shape)
       s = self.crypto.field_random_mask(output_size)
       s_encoded = self.crypto.matmul_encode_y(helper, s)
-      self.crypto.add_plain_inplace(product_cipher, s_encoded)
-      self.send(self.crypto.matmul_serialize_y(helper, product_cipher))
+      product_cipher1 = self.crypto.matmul_pack_outputs(helper, product_cipher)
+      # product_cipher1 = product_cipher
+      self.crypto.add_plain_inplace(product_cipher1, s_encoded)
+      self.send(self.crypto.matmul_serialize_y(helper, product_cipher1))
       return self.crypto.field_negate(s)
 
     def prepare(self, amount=config.PREPARE_AMOUNT):
@@ -483,7 +485,7 @@ class Conv2d(ServerModule):
         product_cipher = self.crypto.conv2d(helper, v_cipher, u_encoded)
       else:
         u_encoded = self.crypto.conv2d_encode_x(helper, u)
-        product_cipher = self.crypto.conv2d(helper, u_encoded, v_cipher)
+        product_cipher = self.crypto.conv2d_reverse(helper, u_encoded, v_cipher)
       output_size = np.product(self.output_shape)
       s = self.crypto.field_random_mask(output_size)
       s_encoded = self.crypto.conv2d_encode_y(helper, s)

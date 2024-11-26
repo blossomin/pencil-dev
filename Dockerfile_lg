@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.0-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 # Install Python
 RUN apt-get update && apt-get install -y \
@@ -8,9 +8,10 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get install -y \
     build-essential \
     python3.10 \
+    python3.10-dev \
     python3.10-distutils \
     python3.10-venv \
-    unzip wget git curl
+    unzip wget git curl cmake 
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
 
 # Install pytorch, transformers, torchtext, torchvision
@@ -53,8 +54,10 @@ RUN mkdir -p /root/Pencil/pencil-fullhe/tools \
     && cp /tmp/library-files/*.so /root/Pencil/pencil-fullhe/tools/ \
     && cp /tmp/library-files/*.so /root/Pencil/pencil-prep/tools/
 
+RUN cd /tmp/library-files && \
+    pip install pytroy-0.0.1-py3-none-any.whl
 # Add the library path to LD_LIBRARY_PATH
 RUN pip uninstall -y numpy && pip install numpy==1.24.3
 ENV LD_LIBRARY_PATH=/root/Pencil/pencil-fullhe/tools:$LD_LIBRARY_PATH
 
-# docker run -it --rm --gpus all -v /home/dchen/projects/pencil-dev/:/home/dchen/projects/pencil-dev -w /home/dchen/projects/pencil-dev pencil:lgv3 bash
+# docker run -it --rm --gpus all -v /home/dchen/projects/pencil-dev/:/home/dchen/projects/pencil-dev -w /home/dchen/projects/pencil-dev pencil:lgv1 bash

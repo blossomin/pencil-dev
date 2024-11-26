@@ -8,6 +8,7 @@ import numpy as np
 import torch.nn.functional
 import time
 import argparse
+import sys
 
 def one_hot(x, dataset_name):
     if "paysim" in dataset_name:
@@ -132,6 +133,7 @@ if __name__ == "__main__":
             if iterations >= 100:
                 break
         print("Epoch time =", epoch_time)
+        sys.stdout.flush()
         total_time += epoch_time
         if iterations >= 100:
             break

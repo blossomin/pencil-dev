@@ -1,7 +1,9 @@
-import tools.pytroy as pytroy
+# import tools.pytroy as pytroy
+import pytroy
 import numpy as np
 import math
 import time
+# from utils import GeneralVectorDataType, GeneralEncoder, GeneralVector, GeneralHeContext
 
 # Note: if you would use the product of secret shares (say, attention)
 # you would need 8192, (60, 60, 60) and precision 25 bits
@@ -17,8 +19,10 @@ SCALE_BITS = 25
 SCALE = 1<<SCALE_BITS
 MOD_SWITCH_TO_NEXT = len(BFV_Q_BITS) > 2
 
+# USE_DEVICE = True
+
 def initialize_kernel():
-  pytroy.initialize_kernel()
+  pytroy.initialize_kernel(0)
 
 def get2e(p):
   i=1
@@ -33,22 +37,30 @@ class EvaluationUtils:
     pass
 
   def receive_keys(self, params_set):
-    self.bfv_params = pytroy.EncryptionParameters(pytroy.SchemeType.bfv)
+    self.bfv_params = pytroy.EncryptionParameters(pytroy.SchemeType.BFV)
     self.bfv_params.set_poly_modulus_degree(BFV_POLY_DEGREE)
     self.bfv_params.set_plain_modulus(PLAIN_MODULUS)
     # print(f"CKKS max bit count = {seal.CoeffModulus.MaxBitCount(POLY_MODULUS_DEGREE)}")
     self.bfv_params.set_coeff_modulus(pytroy.CoeffModulus.create(BFV_POLY_DEGREE, BFV_Q_BITS))
-    self.bfv_context = pytroy.SEALContext(self.bfv_params)
+    self.bfv_context = pytroy.HeContext(self.bfv_params)
     s_public_key, s_relin_key = params_set
     self.public_key = pytroy.PublicKey()
-    self.public_key.load(s_public_key)
+    self.public_key.load(s_public_key, self.bfv_context)
     self.relin_key = pytroy.RelinKeys()
-    self.relin_key.load(s_relin_key)
-    self.bfv_context = pytroy.SEALContext(self.bfv_params)
-    self.encryptor = pytroy.Encryptor(self.bfv_context, self.public_key)
+    self.relin_key.load(s_relin_key, self.bfv_context)
+    self.bfv_context = pytroy.HeContext(self.bfv_params)
+    self.encryptor = pytroy.Encryptor(self.bfv_context)
     self.evaluator = pytroy.Evaluator(self.bfv_context)
     self.encoder = pytroy.BatchEncoder(self.bfv_context)
     self.slot_count = self.encoder.slot_count()
+    self.keygen = pytroy.KeyGenerator(self.bfv_context)
+    self.automorphism_keys = self.keygen.create_automorphism_keys(False)
+
+    # if USE_DEVICE:
+    #     self.bfv_context.to_device_inplace()
+    #     self.encryptor.to_device_inplace()
+    #     self.encoder.to_device_inplace()
+    #     self.keygen.to_device_inplace()
 
   def to_field(self, a: np.ndarray, scale=SCALE, flatten=True):
     if flatten: a = a.flatten()
@@ -78,7 +90,7 @@ class EvaluationUtils:
   def default_scale(self): return SCALE
 
   def serialize(self, c):
-    return c.save()
+    return c.save(self.bfv_context, pytroy.CompressionMode.Nil)
 
   def deserialize(self, c):
     ret = pytroy.Cipher2d()
@@ -89,8 +101,21 @@ class EvaluationUtils:
 
 
   def matmul_helper(self, batchsize, input_dims, output_dims, objective):
-    # print("MatmulHelper: ", batchsize, input_dims, output_dims)
-    ret = pytroy.MatmulHelper(batchsize, input_dims, output_dims, self.slot_count, objective)
+    # print("MatmulHelper: ", batchsize, input_dims, output_dims, objective)
+    ret = None
+    if objective == 0:
+        objective_params = pytroy.MatmulObjective.EncryptLeft
+    elif objective == 1:
+        objective_params = pytroy.MatmulObjective.EncryptRight
+    elif objective == 2:
+        objective_params = pytroy.MatmulObjective.Crossed
+    else:
+        raise Exception("Invalid objective")
+    try:
+        ret = pytroy.MatmulHelper(batchsize, input_dims, output_dims, self.slot_count, objective_params, True)
+    except Exception as e:
+        print(e)
+        raise e
     # print("Helper ok")
     return ret
 
@@ -101,27 +126,45 @@ class EvaluationUtils:
     return helper.encode_outputs(self.encoder, y)
 
   def matmul_encode_w(self, helper, w):
+    w = w.flatten()
     return helper.encode_weights(self.encoder, w)
 
   def matmul(self, helper, x, w):
     ret = helper.matmul(self.evaluator, x, w)
     if MOD_SWITCH_TO_NEXT: ret.mod_switch_to_next(self.evaluator)
     return ret
-
+  def matmul_reverse(self, helper, x, w):
+    ret = helper.matmul_reverse(self.evaluator, x, w)
+    if MOD_SWITCH_TO_NEXT: ret.mod_switch_to_next(self.evaluator)
+    return ret
   def matmul_serialize_y(self, helper, y):
     return helper.serialize_outputs(self.evaluator, y)
 
   def matmul_deserialize_y(self, helper, s):
     return helper.deserialize_outputs(self.evaluator, s)
 
+  def matmul_pack_outputs(self, helper, y):
+    return helper.pack_outputs(self.evaluator, self.automorphism_keys, y)
 
 
   def conv2d_helper(self, batchsize, image_height, image_width, kernel_height, kernel_width, input_channels, output_channels, objective):
     # print("Conv2dHelper: ", batchsize, batchsize, image_height, image_width, kernel_height, kernel_width, input_channels, output_channels)
-    ret = pytroy.Conv2dHelper(
-      batchsize, image_height, image_width, kernel_height, kernel_width,
-      input_channels, output_channels, self.slot_count, objective
-    )
+    ret = None
+    if objective == 0:
+        objective_params = pytroy.MatmulObjective.EncryptLeft
+    elif objective == 1:
+        objective_params = pytroy.MatmulObjective.EncryptRight
+    elif objective == 2:
+        objective_params = pytroy.MatmulObjective.Crossed
+    else:
+        raise Exception("Invalid objective")
+    try:
+        ret = pytroy.Conv2dHelper(
+        batchsize, input_channels, output_channels, image_height, image_width, kernel_height, kernel_width,
+        self.slot_count, objective_params)
+    except Exception as e:
+        print(e)
+        raise e
     # print("Helper ok")
     return ret
 
@@ -139,6 +182,11 @@ class EvaluationUtils:
     if MOD_SWITCH_TO_NEXT: ret.mod_switch_to_next(self.evaluator)
     return ret
 
+  def conv2d_reverse(self, helper, x, w):
+    ret = helper.conv2d_reverse(self.evaluator, x, w)
+    if MOD_SWITCH_TO_NEXT: ret.mod_switch_to_next(self.evaluator)
+    return ret
+
   def conv2d_serialize_y(self, helper, y):
     return helper.serialize_outputs(self.evaluator, y)
 
@@ -146,15 +194,19 @@ class EvaluationUtils:
     return helper.deserialize_outputs(self.evaluator, s)
 
   def encrypt_cipher2d(self, x):
-    return x.encrypt(self.encryptor)
+    # print(f"encrypt_cipher2d: {x.size(), x.rows(), x.columns()}")
+    return x.encrypt_symmetric(self.encryptor)
 
   def add_plain_inplace(self, x, y):
+    # print(f"add_plain_inplace: {x.size(), x.rows(), x.columns()}")
     x.add_plain_inplace(self.evaluator, y)
 
   def add_inplace(self, x, y):
+    # print(f"add_inplace: {x.size(), x.rows(), x.columns()}")
     x.add_inplace(self.evaluator, y)
 
   def add_plain(self, x, y):
+    # print(f"add_plain: {x.size(), x.rows(), x.columns()}")
     return x.add_plain(y)
 
   
@@ -178,17 +230,18 @@ class EncryptionUtils(EvaluationUtils):
     super().__init__()
 
   def generate_keys(self):
-    self.bfv_params = pytroy.EncryptionParameters(pytroy.SchemeType.bfv)
+    self.bfv_params = pytroy.EncryptionParameters(pytroy.SchemeType.BFV)
     self.bfv_params.set_poly_modulus_degree(BFV_POLY_DEGREE)
     self.bfv_params.set_plain_modulus(PLAIN_MODULUS)
     # print(f"CKKS max bit count = {pytroy.CoeffModulus.MaxBitCount(POLY_MODULUS_DEGREE)}")
     self.bfv_params.set_coeff_modulus(pytroy.CoeffModulus.create(BFV_POLY_DEGREE, BFV_Q_BITS))
-    self.bfv_context = pytroy.SEALContext(self.bfv_params)
+    self.bfv_context = pytroy.HeContext(self.bfv_params)
+    # self.bfv_context.to_device_inplace()
     self.keygen = pytroy.KeyGenerator(self.bfv_context)
     self.secret_key = self.keygen.secret_key()
-    self.public_key = self.keygen.create_public_key()
-    self.relin_key = self.keygen.create_relin_keys()
-    self.encryptor = pytroy.Encryptor(self.bfv_context, self.public_key)
+    self.public_key = self.keygen.create_public_key(False)
+    self.relin_key = self.keygen.create_relin_keys(False)
+    self.encryptor = pytroy.Encryptor(self.bfv_context)
     self.decryptor = pytroy.Decryptor(self.bfv_context, self.secret_key)
     self.evaluator = pytroy.Evaluator(self.bfv_context)
     self.encoder = pytroy.BatchEncoder(self.bfv_context)
@@ -200,8 +253,14 @@ class EncryptionUtils(EvaluationUtils):
     # y1 = self.encryptor.encrypt(x1)
     # x2 = self.encoder.encode_polynomial(np.array([1,2,3,4], dtype=np.uint64))
     # y2 = self.encryptor.encrypt(x2)
+    # if USE_DEVICE:
+    #     self.bfv_context.to_device_inplace()
+    #     self.encryptor.to_device_inplace()
+    #     self.decryptor.to_device_inplace()
+    #     self.encoder.to_device_inplace()
+    #     self.keygen.to_device_inplace()
 
-    return (self.public_key.save(), self.relin_key.save())
+    return (self.public_key.save(self.bfv_context), self.relin_key.save(self.bfv_context))
       
   def matmul_decrypt_y(self, helper, y):
     return helper.decrypt_outputs(self.encoder, self.decryptor, y)

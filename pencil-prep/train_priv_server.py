@@ -9,6 +9,7 @@ import numpy as np
 import dataloader
 from tqdm import tqdm
 import argparse
+import sys
 
 if __name__ == "__main__":
 
@@ -52,11 +53,11 @@ if __name__ == "__main__":
     model = modelx
     model.prepare(input_shape)
     print("Server: Model preprocessing finished.")
-
+    sys.stdout.flush()
     _, test_data = dataloader.load_dataset(dataset_name)
     test_dataloader = dataloader.BatchLoader(test_data, batchsize, True)
     print("Server: Test dataset loaded")
-
+    sys.stdout.flush()
     # set up optimizer
     optimizer_name = args.o
     optimizer_momentum = args.om

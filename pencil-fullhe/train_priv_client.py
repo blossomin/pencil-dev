@@ -8,6 +8,7 @@ import numpy as np
 import torch.nn.functional
 import time
 import argparse
+import sys
 
 def one_hot(x, dataset_name):
     if "cifar100" in dataset_name:
@@ -125,6 +126,8 @@ if __name__ == "__main__":
                 if SPLIT: name += f"-split-join{SPLIT_JOIN_COUNT}"
                 comm.send(name)
             iterations += 1
+            print("Iterations =", iterations)
+            sys.stdout.flush()
             if iterations >= 100:
                 break
         print("Epoch time =", epoch_time)

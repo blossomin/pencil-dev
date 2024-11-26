@@ -166,7 +166,8 @@ def load_dataset(name, amount=None):
     tokenizer.pad_token = tokenizer.eos_token
 
     # use gpu
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     model.to(device)
 
     def gpt2_extract_features(sentence):

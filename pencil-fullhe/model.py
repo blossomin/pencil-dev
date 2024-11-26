@@ -3,8 +3,8 @@ from torch import nn
 import torchvision
 import torch_models
 
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
+# DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = "cpu"
 def get_model_alexnet(dropout=0.5, num_classes=10):
     return torch.nn.Sequential(
         # input (b, 3, 224, 224)
@@ -229,6 +229,7 @@ def get_model(name = "cifar10_lenet5"):
     }
     return name, model_funcs[name]()
 
+BATCHSIZE = 32
 def get_dataset(x):
     if x == "alexnet": return "cifar10-224", (1, 3, 224, 224)
     if x == "paysim": return "paysim", (64, 77)
