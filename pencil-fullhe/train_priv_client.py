@@ -124,6 +124,9 @@ if __name__ == "__main__":
                 name = f"epoch{epoch}-step{step}"
                 if SPLIT: name += f"-split-join{SPLIT_JOIN_COUNT}"
                 comm.send(name)
+            print(f"Step {step} finished, time = {time.time() - timer:.2f}s")
+            import sys
+            sys.stdout.flush()
             iterations += 1
             if iterations >= 100:
                 break
