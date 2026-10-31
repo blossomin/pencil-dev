@@ -1,4 +1,4 @@
-FROM fbpcf/ubuntu-emp:0.2.3-haswell as emp
+FROM ghcr.io/facebookresearch/fbpcf/ubuntu-emp:0.2.3-haswell as emp
 
 # Use the PyTorch base image with CUDA support
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --upgrade pip \
-    && pip3 install cmake numpy torch torchvision torchtext transformers
+    && pip3 install cmake numpy "torch<2.4.0" torchvision torchtext transformers
 # Set the working directory
 WORKDIR /home/dchen/projects/pencil-dev
 
@@ -28,5 +28,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 # Set the entrypoint to bash
 ENTRYPOINT ["bash"]
 
-# --storage-opt size=20G
-# docker run -it --rm --gpus all -v /home/dchen/projects/pencil-dev/:/home/dchen/projects/pencil-dev -w /home/dchen/projects/pencil-dev pencilcuda:v2
+# --storage-opt size=20G --user dchen:dchen
+docker run -it --rm --gpus all \
+ -v /home/dchen/projects/pencil-cpu/:/home/dchen/projects/pencil-dev \
+ -w /home/dchen/projects/pencil-dev pencilcpu:v1
